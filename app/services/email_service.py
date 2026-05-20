@@ -6,20 +6,21 @@ from app.config import settings
 
 def _send(to_email: str, subject: str, html: str):
     """Low-level SMTP send. Called from BackgroundTasks or Celery."""
-    # Базовая функция отправки. Все остальные функции используют её.
+    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+        # SMTP not configured — skip silently (dev/test environment)
+        return
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = settings.SMTP_FROM
+    msg["From"] = settings.SMTP_FROM or settings.SMTP_USER
     msg["To"] = to_email
     msg.attach(MIMEText(html, "html"))
-    # MIME "alternative" — письмо в HTML формате
 
     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
         server.ehlo()
         server.starttls()
-        # starttls() — шифруем соединение (обязательно для Gmail порт 587)
         server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_FROM, to_email, msg.as_string())
+        server.sendmail(settings.SMTP_FROM or settings.SMTP_USER, to_email, msg.as_string())
 
 
 def send_verification_email(to_email: str, token: str):
