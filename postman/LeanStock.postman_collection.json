@@ -1,0 +1,429 @@
+{
+  "info": {
+    "name": "LeanStock API",
+    "description": "Полная коллекция LeanStock — inventory management system.\n\nПорядок работы:\n1. Register → получи письмо → Verify Email\n2. Login → токены сохраняются автоматически\n3. Admin создаёт сотрудников через POST /admin/users\n4. Сотрудник подтверждает email и заходит",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",      "value": "http://localhost:8000" },
+    { "key": "access_token",  "value": "" },
+    { "key": "refresh_token", "value": "" }
+  ],
+  "item": [
+
+    {
+      "name": "🟢 Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🔑 Auth",
+      "item": [
+        {
+          "name": "1. Register (создать компанию)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mycompany.com\",\n  \"username\": \"admin\",\n  \"password\": \"password123\",\n  \"tenant_name\": \"MyCompany\"\n}"
+            }
+          }
+        },
+        {
+          "name": "2. Verify Email (токен из письма)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/auth/verify-email/PASTE_TOKEN_HERE",
+            "description": "Скопируй токен из ссылки в письме и вставь вместо PASTE_TOKEN_HERE"
+          }
+        },
+        {
+          "name": "3. Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('access_token', json.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "    console.log('Tokens saved!');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mycompany.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "4. Get Current User (me)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "5. Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('access_token', json.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "6. Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/logout",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password (отправить письмо)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/forgot-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mycompany.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password (токен из письма)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/reset-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"PASTE_RESET_TOKEN_HERE\",\n  \"new_password\": \"newpassword123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📦 Products",
+      "item": [
+        {
+          "name": "List Products (cursor pagination)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/products?limit=20",
+              "query": [
+                { "key": "limit",    "value": "20" },
+                { "key": "cursor",   "value": "", "disabled": true },
+                { "key": "category", "value": "", "disabled": true }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/products",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Widget Pro\",\n  \"sku\": \"WGT-001\",\n  \"category\": \"electronics\",\n  \"price\": 149.99\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/products/1",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/products/1",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 129.99,\n  \"category\": \"gadgets\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete (Deactivate) Product",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/products/1",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🏭 Locations",
+      "item": [
+        {
+          "name": "List Locations",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/locations",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "Create Location",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/locations",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Главный склад\",\n  \"address\": \"ул. Складская 1\",\n  \"city\": \"Алматы\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Location by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/locations/1",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "Delete (Deactivate) Location",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/locations/1",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📊 Inventory",
+      "item": [
+        {
+          "name": "List Inventory (cursor pagination)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/inventory?limit=50",
+              "query": [
+                { "key": "limit",       "value": "50" },
+                { "key": "location_id", "value": "", "disabled": true },
+                { "key": "cursor",      "value": "", "disabled": true }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "Set Inventory Quantity",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/inventory/set",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1,\n  \"location_id\": 1,\n  \"quantity\": 100\n}"
+            }
+          }
+        },
+        {
+          "name": "Transfer Inventory (SELECT FOR UPDATE)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/inventory/transfer",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1,\n  \"from_location_id\": 1,\n  \"to_location_id\": 2,\n  \"quantity\": 30\n}"
+            },
+            "description": "Атомарный трансфер с SELECT FOR UPDATE. После выполнения приходит email уведомление."
+          }
+        },
+        {
+          "name": "List Transfer History",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/inventory/transfers?limit=50",
+              "query": [
+                { "key": "limit",  "value": "50" },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "Dead Stock Report (>30 дней)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/inventory/dead-stock",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "👑 Admin",
+      "item": [
+        {
+          "name": "── Пользователи ──",
+          "item": [
+            {
+              "name": "List Users (все в компании)",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/users",
+                "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+              }
+            },
+            {
+              "name": "Create User (Admin создаёт сотрудника)",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/admin/users",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" },
+                  { "key": "Content-Type",  "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"manager@mycompany.com\",\n  \"username\": \"john_manager\",\n  \"password\": \"password123\",\n  \"role\": \"manager\"\n}"
+                },
+                "description": "Admin создаёт пользователя внутри своей компании. Пользователь получает invite email со ссылкой подтверждения. Доступные роли: staff, manager, admin."
+              }
+            },
+            {
+              "name": "Update User Role",
+              "request": {
+                "method": "PUT",
+                "url": "{{base_url}}/admin/users/2/role",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" },
+                  { "key": "Content-Type",  "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"manager\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Deactivate User",
+              "request": {
+                "method": "DELETE",
+                "url": "{{base_url}}/admin/users/2",
+                "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                "description": "Нельзя деактивировать самого себя."
+              }
+            }
+          ]
+        },
+        {
+          "name": "── Логи и Jobs ──",
+          "item": [
+            {
+              "name": "View Audit Logs",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/audit-logs",
+                "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+              }
+            },
+            {
+              "name": "Trigger Dead Stock Decay (Celery)",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{base_url}}/admin/trigger-decay?decay_percent=10",
+                  "query": [{ "key": "decay_percent", "value": "10" }]
+                },
+                "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                "description": "Запускает Celery задачу: применяет +decay_percent% скидку к продуктам с days_in_inventory > 30 (макс 90%)."
+              }
+            },
+            {
+              "name": "Trigger Increment Days (Celery)",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/admin/trigger-increment-days",
+                "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+                "description": "Запускает Celery задачу: +1 день к days_in_inventory для всех активных продуктов."
+              }
+            }
+          ]
+        }
+      ]
+    }
+
+  ]
+}

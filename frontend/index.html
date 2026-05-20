@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeanStock — Inventory Management</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ─── Sidebar ─────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 230px;
+      background: #0f172a;
+      color: #94a3b8;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      padding: 18px 20px;
+      color: white;
+      font-size: 17px;
+      font-weight: 700;
+      border-bottom: 1px solid #1e293b;
+      letter-spacing: -0.3px;
+    }
+    .sidebar-logo span { color: #818cf8; }
+    .sidebar-nav { padding: 8px 0; flex: 1; }
+    .nav-group {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #475569;
+      padding: 14px 16px 4px;
+      font-weight: 700;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px;
+      color: #94a3b8;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 2px 8px;
+      font-size: 13px;
+      transition: all 0.15s;
+      border: none;
+      background: none;
+      width: calc(100% - 16px);
+      text-align: left;
+    }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #4f46e5; color: white; }
+    .sidebar-user {
+      padding: 12px 16px;
+      border-top: 1px solid #1e293b;
+      font-size: 12px;
+    }
+
+    /* ─── Main ────────────────────────────────────────────────────────── */
+    .main { margin-left: 230px; flex: 1; display: flex; flex-direction: column; }
+
+    .topbar {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 24px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-title { font-size: 15px; font-weight: 600; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .token-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #64748b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #cbd5e1; }
+    .dot.on { background: #22c55e; }
+
+    .content { padding: 24px; flex: 1; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ─── Cards ───────────────────────────────────────────────────────── */
+    .card {
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f1f5f9;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    /* ─── Forms ───────────────────────────────────────────────────────── */
+    .fg { margin-bottom: 12px; }
+    label { display: block; font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    input, select, textarea {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid #d1d5db; border-radius: 7px;
+      font-size: 13px; color: #1e293b; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      background: #fafafa;
+    }
+    input:focus, select:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); background: white; }
+    input::placeholder { color: #9ca3af; }
+
+    /* ─── Buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      padding: 8px 16px; border-radius: 7px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none;
+      transition: all 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary { background: #4f46e5; color: white; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-warn { background: #d97706; color: white; }
+    .btn-warn:hover { background: #b45309; }
+    .btn-ghost { background: #f1f5f9; color: #374151; border: 1px solid #e2e8f0; }
+    .btn-ghost:hover { background: #e2e8f0; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 5px; }
+    .w100 { width: 100%; justify-content: center; }
+
+    /* ─── Tables ──────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.04em; }
+    td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; }
+    tr:hover td { background: #fafafa; }
+    .empty-row td { text-align: center; color: #94a3b8; padding: 32px; }
+
+    /* ─── Badges ──────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 9999px; font-size: 11px; font-weight: 600;
+    }
+    .b-admin { background: #fef3c7; color: #92400e; }
+    .b-manager { background: #ede9fe; color: #5b21b6; }
+    .b-staff { background: #e0f2fe; color: #0369a1; }
+    .b-ok { background: #dcfce7; color: #166534; }
+    .b-warn { background: #fff7ed; color: #9a3412; }
+    .b-dead { background: #fee2e2; color: #991b1b; }
+
+    /* ─── Response panel ──────────────────────────────────────────────── */
+    .resp {
+      background: #0f172a; color: #94a3b8;
+      border-radius: 8px; padding: 14px 16px;
+      font-family: 'Menlo', 'Monaco', monospace; font-size: 12px;
+      max-height: 200px; overflow-y: auto;
+      margin-top: 12px; display: none;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .resp .ok  { color: #4ade80; }
+    .resp .err { color: #f87171; }
+
+    /* ─── Toast ───────────────────────────────────────────────────────── */
+    #toasts { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 11px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      color: white; box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      animation: fadeIn .2s ease;
+      max-width: 320px;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .t-ok   { background: #16a34a; }
+    .t-err  { background: #dc2626; }
+    .t-info { background: #4f46e5; }
+
+    /* ─── Stats ───────────────────────────────────────────────────────── */
+    .stat { text-align: center; }
+    .stat-val { font-size: 28px; font-weight: 700; color: #4f46e5; }
+    .stat-lbl { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    .divider { height: 1px; background: #f1f5f9; margin: 14px 0; }
+    .mt2 { margin-top: 8px; } .mt3 { margin-top: 12px; } .mb2 { margin-bottom: 8px; } .mb3 { margin-bottom: 12px; }
+    .flex { display: flex; } .gap2 { gap: 8px; } .gap3 { gap: 12px; } .items-center { align-items: center; }
+    code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div id="toasts"></div>
+
+<!-- ══════════════════════ SIDEBAR ══════════════════════ -->
+<div class="sidebar">
+  <div class="sidebar-logo">📦 Lean<span>Stock</span></div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">Аккаунт</div>
+    <button class="nav-item active" onclick="show('auth')">🔑 Вход / Регистрация</button>
+    <button class="nav-item" onclick="show('dashboard')">🏠 Дашборд</button>
+
+    <div class="nav-group">Каталог</div>
+    <button class="nav-item" onclick="show('products')">📦 Продукты</button>
+    <button class="nav-item" onclick="show('locations')">🏭 Локации</button>
+
+    <div class="nav-group">Склад</div>
+    <button class="nav-item" onclick="show('inventory')">📊 Инвентарь</button>
+    <button class="nav-item" onclick="show('transfer')">🔄 Трансфер</button>
+    <button class="nav-item" onclick="show('deadstock')">⚠️ Dead Stock</button>
+    <button class="nav-item" onclick="show('reservations')">🔖 Резервы</button>
+    <button class="nav-item" onclick="show('forecast')">📈 Прогноз</button>
+
+    <div class="nav-group">Поставки</div>
+    <button class="nav-item" onclick="show('suppliers')">🏪 Поставщики</button>
+    <button class="nav-item" onclick="show('purchase_orders')">📋 Заказы (PO)</button>
+
+    <div class="nav-group">Админ</div>
+    <button class="nav-item" onclick="show('users')">👥 Пользователи</button>
+    <button class="nav-item" onclick="show('logs')">📋 Audit Logs</button>
+    <button class="nav-item" onclick="show('jobs')">⚙️ Celery Jobs</button>
+  </nav>
+  <div class="sidebar-user" id="sb-user">
+    <div style="color:#475569;font-size:12px">Не авторизован</div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MAIN ══════════════════════ -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Авторизация</div>
+    <div class="topbar-right">
+      <div class="token-badge">
+        <div class="dot" id="tok-dot"></div>
+        <span id="tok-label">нет токена</span>
+      </div>
+      <button class="btn btn-danger btn-sm" id="btn-logout" style="display:none" onclick="doLogout()">Выйти</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ DASHBOARD ════════════════════════════════════════════════════ -->
+    <div class="section" id="section-dashboard">
+      <div class="grid3" style="margin-bottom:16px">
+        <div class="card" style="text-align:center">
+          <div class="stat-val" id="db-products">—</div>
+          <div class="stat-lbl">Товаров в каталоге</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="stat-val" id="db-units">—</div>
+          <div class="stat-lbl">Единиц на складах</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="stat-val" id="db-value" style="font-size:20px">—</div>
+          <div class="stat-lbl">Стоимость инвентаря (₸)</div>
+        </div>
+      </div>
+      <div class="grid3" style="margin-bottom:16px">
+        <div class="card" style="text-align:center">
+          <div class="stat-val" id="db-dead" style="color:#dc2626">—</div>
+          <div class="stat-lbl">Dead Stock (>30 дней)</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="stat-val" id="db-lowstock" style="color:#d97706">—</div>
+          <div class="stat-lbl">Низкий запас</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="stat-val" id="db-pos" style="color:#4f46e5">—</div>
+          <div class="stat-lbl">Заказов в работе (PO)</div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">🔄 Последние трансферы</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Товар</th><th>Кол-во</th><th>Откуда</th><th>Куда</th><th>Дата</th></tr></thead>
+              <tbody id="db-transfers"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Последние события</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Действие</th><th>Объект</th><th>Детали</th></tr></thead>
+              <tbody id="db-events"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ AUTH ══════════════════════════════════════════════════════════ -->
+    <div class="section active" id="section-auth">
+      <div class="grid2">
+
+        <!-- Login -->
+        <div class="card">
+          <div class="card-title">🔑 Войти в систему</div>
+          <div class="fg"><label>Email</label><input id="li-email" type="email" placeholder="admin@company.com" /></div>
+          <div class="fg"><label>Пароль</label><input id="li-pass" type="password" placeholder="••••••••" /></div>
+          <button class="btn btn-primary w100" onclick="doLogin()">Войти</button>
+        </div>
+
+        <!-- Register -->
+        <div class="card">
+          <div class="card-title">🏢 Создать новую компанию</div>
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#1e40af;">
+            ℹ️ Это создаёт <b>новую компанию</b> — ты становишься <b>Admin</b>.<br>
+            Сотрудников добавляешь сам через раздел <b>👥 Пользователи</b>.
+          </div>
+          <div class="fg"><label>Твой Email</label><input id="re-email" type="email" placeholder="ceo@mycompany.com" /></div>
+          <div class="fg"><label>Имя пользователя</label><input id="re-user" placeholder="johndoe" /></div>
+          <div class="fg"><label>Пароль (мин. 8 символов)</label><input id="re-pass" type="password" /></div>
+          <div class="fg"><label>Название компании</label><input id="re-tenant" placeholder="MyCompany" /></div>
+          <button class="btn btn-success w100" onclick="doRegister()">Создать компанию</button>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <!-- Verify -->
+        <div class="card">
+          <div class="card-title">📧 Подтвердить Email</div>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:12px">
+            После регистрации на почту придёт письмо со ссылкой.<br>
+            Скопируй токен из URL и вставь сюда.
+          </p>
+          <div class="fg"><label>Токен из письма</label><input id="ve-token" placeholder="вставь токен из ссылки..." /></div>
+          <button class="btn btn-primary w100" onclick="doVerify()">Подтвердить</button>
+        </div>
+
+        <!-- Password reset -->
+        <div class="card">
+          <div class="card-title">🔒 Сброс пароля</div>
+          <div class="fg"><label>Email для сброса</label><input id="fp-email" type="email" placeholder="user@company.com" /></div>
+          <button class="btn btn-ghost w100 mb2" onclick="doForgot()">Отправить письмо</button>
+          <div class="divider"></div>
+          <div class="fg"><label>Токен из письма</label><input id="rp-token" placeholder="токен сброса" /></div>
+          <div class="fg"><label>Новый пароль</label><input id="rp-pass" type="password" /></div>
+          <button class="btn btn-warn w100" onclick="doReset()">Сменить пароль</button>
+        </div>
+      </div>
+
+      <div class="resp" id="r-auth"></div>
+    </div>
+
+    <!-- ══ PRODUCTS ═══════════════════════════════════════════════════════ -->
+    <div class="section" id="section-products">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">➕ Новый продукт</div>
+          <div class="fg"><label>Название</label><input id="pp-name" placeholder="Widget Pro" /></div>
+          <div class="fg"><label>SKU</label><input id="pp-sku" placeholder="WGT-001" /></div>
+          <div class="fg"><label>Категория</label><input id="pp-cat" placeholder="electronics" /></div>
+          <div class="fg"><label>Цена (₸)</label><input id="pp-price" type="number" step="0.01" placeholder="999.99" /></div>
+          <div class="fg"><label>Мин. запас (для low-stock alert)</label><input id="pp-min" type="number" value="0" placeholder="0" /></div>
+          <button class="btn btn-primary w100" onclick="createProduct()">Создать продукт</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🔍 Фильтр и обновление</div>
+          <div class="fg"><label>Фильтр по категории</label><input id="pp-fcat" placeholder="оставь пустым — все" /></div>
+          <button class="btn btn-ghost w100" onclick="loadProducts()">↻ Обновить список</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📦 Список продуктов</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Название</th><th>SKU</th><th>Категория</th><th>Цена</th><th>Скидка</th><th>Дней</th><th>Итог</th><th>Действия</th></tr></thead>
+            <tbody id="tb-products"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="resp" id="r-products"></div>
+    </div>
+
+    <!-- ══ LOCATIONS ══════════════════════════════════════════════════════ -->
+    <div class="section" id="section-locations">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">➕ Новая локация</div>
+          <div class="fg"><label>Название</label><input id="ll-name" placeholder="Склад Алматы" /></div>
+          <div class="fg"><label>Адрес</label><input id="ll-addr" placeholder="ул. Складская 1" /></div>
+          <div class="fg"><label>Город</label><input id="ll-city" placeholder="Алматы" /></div>
+          <button class="btn btn-primary w100" onclick="createLocation()">Создать локацию</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🏭 Локации</div>
+          <button class="btn btn-ghost w100 mb3" onclick="loadLocations()">↻ Обновить</button>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Название</th><th>Адрес</th><th>Город</th><th></th></tr></thead>
+              <tbody id="tb-locs"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="resp" id="r-locs"></div>
+    </div>
+
+    <!-- ══ INVENTORY ══════════════════════════════════════════════════════ -->
+    <div class="section" id="section-inventory">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">✏️ Установить количество</div>
+          <div class="fg"><label>Товар</label><select id="iv-pid"><option value="">— загрузка... —</option></select></div>
+          <div class="fg"><label>Локация</label><select id="iv-lid"><option value="">— загрузка... —</option></select></div>
+          <div class="fg"><label>Количество</label><input id="iv-qty" type="number" placeholder="100" /></div>
+          <button class="btn btn-primary w100" onclick="setInv()">Установить</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🔍 Фильтр</div>
+          <div class="fg"><label>Локация (пусто = все)</label><select id="iv-floc"><option value="">Все локации</option></select></div>
+          <button class="btn btn-ghost w100" onclick="loadInv()">↻ Обновить</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Текущий инвентарь</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Продукт ID</th><th>Локация ID</th><th>Количество</th><th>Обновлено</th></tr></thead>
+            <tbody id="tb-inv"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="resp" id="r-inv"></div>
+    </div>
+
+    <!-- ══ TRANSFER ═══════════════════════════════════════════════════════ -->
+    <div class="section" id="section-transfer">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">🔄 Трансфер между локациями</div>
+          <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+            Использует <code>SELECT FOR UPDATE</code> — защита от overselling.
+          </p>
+          <div class="fg"><label>Товар</label><select id="tr-pid"><option value="">— выбери товар —</option></select></div>
+          <div class="fg"><label>Откуда</label><select id="tr-from"><option value="">— выбери локацию —</option></select></div>
+          <div class="fg"><label>Куда</label><select id="tr-to"><option value="">— выбери локацию —</option></select></div>
+          <div class="fg"><label>Количество</label><input id="tr-qty" type="number" placeholder="30" /></div>
+          <button class="btn btn-success w100" onclick="doTransfer()">🚀 Выполнить трансфер</button>
+          <p style="font-size:12px;color:#6b7280;margin-top:8px">* После трансфера на почту придёт уведомление 📧</p>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 История трансферов</div>
+          <button class="btn btn-ghost w100 mb3" onclick="loadTransfers()">↻ Обновить историю</button>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Продукт</th><th>Откуда</th><th>Куда</th><th>Кол-во</th><th>Дата</th></tr></thead>
+              <tbody id="tb-transfers"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="resp" id="r-transfer"></div>
+    </div>
+
+    <!-- ══ DEAD STOCK ══════════════════════════════════════════════════════ -->
+    <div class="section" id="section-deadstock">
+      <div class="card">
+        <div class="card-title">⚠️ Dead Stock — продукты в инвентаре более 30 дней</div>
+        <p style="font-size:13px;color:#6b7280;margin-bottom:12px">
+          Celery каждые 72 часа автоматически добавляет скидку +10% (до максимума 90%).
+        </p>
+        <button class="btn btn-ghost mb3" onclick="loadDeadStock()">↻ Обновить</button>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Название</th><th>SKU</th><th>Дней</th><th>Скидка</th><th>Цена</th><th>Итог</th></tr></thead>
+            <tbody id="tb-dead"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="resp" id="r-dead"></div>
+    </div>
+
+    <!-- ══ RESERVATIONS ══════════════════════════════════════════════════ -->
+    <div class="section" id="section-reservations">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">🔖 Создать резерв</div>
+          <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+            Резерв блокирует товар от трансфера на заданное время. Использует Redis-lock для защиты от гонки.
+          </p>
+          <div class="fg"><label>Товар</label><select id="rs-pid"><option value="">— выбери товар —</option></select></div>
+          <div class="fg"><label>Локация</label><select id="rs-lid"><option value="">— выбери локацию —</option></select></div>
+          <div class="fg"><label>Количество</label><input id="rs-qty" type="number" placeholder="10" /></div>
+          <div class="fg"><label>TTL (минут)</label><input id="rs-ttl" type="number" value="30" /></div>
+          <button class="btn btn-primary w100" onclick="createReservation()">Зарезервировать</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Список резервов</div>
+          <button class="btn btn-ghost w100 mb3" onclick="loadReservations()">↻ Обновить</button>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Продукт</th><th>Локация</th><th>Кол-во</th><th>Статус</th><th>До</th><th></th></tr></thead>
+              <tbody id="tb-reservations"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="resp" id="r-reservations"></div>
+    </div>
+
+    <!-- ══ FORECAST ═══════════════════════════════════════════════════════ -->
+    <div class="section" id="section-forecast">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">⚙️ Параметры прогноза</div>
+          <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+            Скользящее среднее потребления за период. Показывает товары, которые нужно заказать.
+          </p>
+          <div class="fg"><label>Окно анализа (дней)</label><input id="fc-window" type="number" value="30" /></div>
+          <div class="fg"><label>Порог дозаказа (дней до нуля)</label><input id="fc-thresh" type="number" value="7" /></div>
+          <div class="fg"><label>Локация (пусто = все)</label><select id="fc-loc"><option value="">Все локации</option></select></div>
+          <button class="btn btn-primary w100" onclick="loadForecast()">📈 Рассчитать прогноз</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🔴 Низкий запас</div>
+          <button class="btn btn-ghost w100 mb3" onclick="loadLowStock()">↻ Обновить</button>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Продукт</th><th>SKU</th><th>Локация</th><th>Факт</th><th>Мин</th><th>Нехватка</th></tr></thead>
+              <tbody id="tb-lowstock"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📈 Прогноз дозаказа</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Продукт</th><th>SKU</th><th>Локация</th><th>В наличии</th><th>Потребл./день</th><th>Осталось дней</th><th>Нужно заказать</th><th>Статус</th></tr></thead>
+            <tbody id="tb-forecast"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="resp" id="r-forecast"></div>
+    </div>
+
+    <!-- ══ SUPPLIERS ══════════════════════════════════════════════════════ -->
+    <div class="section" id="section-suppliers">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">➕ Новый поставщик</div>
+          <div class="fg"><label>Название</label><input id="sp-name" placeholder="ТОО Снабжение" /></div>
+          <div class="fg"><label>Email</label><input id="sp-email" type="email" placeholder="orders@supplier.com" /></div>
+          <div class="fg"><label>Телефон</label><input id="sp-phone" placeholder="+7 777 123 4567" /></div>
+          <div class="fg"><label>Срок поставки (дней)</label><input id="sp-lead" type="number" value="7" /></div>
+          <button class="btn btn-primary w100" onclick="createSupplier()">Создать поставщика</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🏪 Поставщики</div>
+          <button class="btn btn-ghost w100 mb3" onclick="loadSuppliers()">↻ Обновить</button>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Название</th><th>Email</th><th>Телефон</th><th>Срок (дней)</th><th></th></tr></thead>
+              <tbody id="tb-suppliers"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="resp" id="r-suppliers"></div>
+    </div>
+
+    <!-- ══ PURCHASE ORDERS ════════════════════════════════════════════════ -->
+    <div class="section" id="section-purchase_orders">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">➕ Новый заказ поставщику</div>
+          <div class="fg"><label>Поставщик</label><select id="po-sup"><option value="">— выбери поставщика —</option></select></div>
+          <div class="fg"><label>Куда доставить (локация)</label><select id="po-loc"><option value="">— выбери локацию —</option></select></div>
+          <div class="fg"><label>Примечания</label><input id="po-notes" placeholder="Срочный заказ" /></div>
+
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">Добавить позицию</div>
+            <div class="fg"><label>Товар</label><select id="po-item-pid"><option value="">— выбери товар —</option></select></div>
+            <div class="grid2">
+              <div class="fg"><label>Количество</label><input id="po-item-qty" type="number" placeholder="50" min="1" /></div>
+              <div class="fg"><label>Цена за ед. (₸)</label><input id="po-item-price" type="number" step="0.01" placeholder="100.00" /></div>
+            </div>
+            <button class="btn btn-ghost w100" onclick="poAddItem()">＋ Добавить в список</button>
+          </div>
+
+          <div id="po-items-list" style="display:none;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Позиции заказа</div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr>
+                <th style="text-align:left;padding:6px 8px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Товар</th>
+                <th style="text-align:left;padding:6px 8px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Кол-во</th>
+                <th style="text-align:left;padding:6px 8px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Цена</th>
+                <th style="text-align:left;padding:6px 8px;background:#f1f5f9;border-bottom:2px solid #e2e8f0">Сумма</th>
+                <th style="padding:6px 8px;background:#f1f5f9;border-bottom:2px solid #e2e8f0"></th>
+              </tr></thead>
+              <tbody id="po-items-tbody"></tbody>
+            </table>
+            <div id="po-items-total" style="text-align:right;font-size:13px;font-weight:700;color:#4f46e5;margin-top:8px"></div>
+          </div>
+
+          <button class="btn btn-primary w100" onclick="createPO()">📋 Создать заказ</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Заказы поставщикам</div>
+          <div class="fg"><label>Фильтр по статусу</label>
+            <select id="po-fst">
+              <option value="">Все</option>
+              <option value="draft">draft</option>
+              <option value="sent">sent</option>
+              <option value="confirmed">confirmed</option>
+              <option value="received">received</option>
+              <option value="cancelled">cancelled</option>
+            </select>
+          </div>
+          <button class="btn btn-ghost w100 mb3" onclick="loadPOs()">↻ Обновить</button>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Поставщик</th><th>Статус</th><th>Локация</th><th>Позиции</th><th>Дата</th><th>Действия</th></tr></thead>
+              <tbody id="tb-pos"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="resp" id="r-pos"></div>
+    </div>
+
+    <!-- ══ USERS ══════════════════════════════════════════════════════════ -->
+    <div class="section" id="section-users">
+      <div class="grid2">
+        <!-- Create user form -->
+        <div class="card">
+          <div class="card-title">➕ Добавить сотрудника</div>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#166534;">
+            Сотрудник получит письмо на почту с кнопкой «Подтвердить и войти».
+          </div>
+          <div class="fg"><label>Email сотрудника</label><input id="cu-email" type="email" placeholder="manager@company.com" /></div>
+          <div class="fg"><label>Имя пользователя</label><input id="cu-user" placeholder="johnmanager" /></div>
+          <div class="fg"><label>Пароль (сообщи сотруднику)</label><input id="cu-pass" type="password" placeholder="мин. 8 символов" /></div>
+          <div class="fg">
+            <label>Роль</label>
+            <select id="cu-role">
+              <option value="staff">staff — базовый доступ (просмотр)</option>
+              <option value="manager">manager — управление товарами и трансферами</option>
+              <option value="admin">admin — полный доступ</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w100" onclick="createUser()">Создать и отправить приглашение 📧</button>
+        </div>
+
+        <!-- Info card -->
+        <div class="card">
+          <div class="card-title">ℹ️ Роли в системе</div>
+          <div style="font-size:13px;color:#374151;line-height:1.8">
+            <div style="margin-bottom:10px"><span class="badge b-admin">admin</span> — полный доступ: создание пользователей, все операции, audit logs, Celery jobs</div>
+            <div style="margin-bottom:10px"><span class="badge b-manager">manager</span> — управление продуктами, локациями, трансферами, инвентарём</div>
+            <div><span class="badge b-staff">staff</span> — только просмотр: список продуктов, инвентарь, трансферы</div>
+            <div class="divider"></div>
+            <p style="font-size:12px;color:#6b7280">Сотрудник должен подтвердить email прежде чем сможет войти. Ссылка действует 48 часов.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👥 Сотрудники компании</div>
+        <button class="btn btn-ghost mb3" onclick="loadUsers()">↻ Обновить список</button>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Email</th><th>Username</th><th>Роль</th><th>Верифицирован</th><th>Активен</th><th>Изменить роль</th><th></th></tr></thead>
+            <tbody id="tb-users"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="resp" id="r-users"></div>
+    </div>
+
+    <!-- ══ AUDIT LOGS ═════════════════════════════════════════════════════ -->
+    <div class="section" id="section-logs">
+      <div class="card">
+        <div class="card-title">📋 Audit Log — история действий</div>
+        <button class="btn btn-ghost mb3" onclick="loadLogs()">↻ Обновить</button>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Действие</th><th>Тип</th><th>Entity ID</th><th>Детали</th><th>Дата</th></tr></thead>
+            <tbody id="tb-logs"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="resp" id="r-logs"></div>
+    </div>
+
+    <!-- ══ CELERY JOBS ════════════════════════════════════════════════════ -->
+    <div class="section" id="section-jobs">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">☠️ Dead Stock Decay</div>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:14px">
+            Применяет скидку к продуктам с <code>days_in_inventory &gt; 30</code>.<br>
+            Автоматически — каждые 72ч через Celery Beat.
+          </p>
+          <div class="fg"><label>Скидка за шаг (%)</label><input id="jb-pct" type="number" value="10" /></div>
+          <button class="btn btn-danger w100" onclick="triggerDecay()">🚀 Запустить Decay</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📅 Инкремент дней</div>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:14px">
+            Увеличивает <code>days_in_inventory</code> на 1 для всех активных продуктов.<br>
+            Автоматически — каждые 24ч.
+          </p>
+          <button class="btn btn-primary w100" onclick="triggerIncrement()">🚀 Запустить</button>
+        </div>
+      </div>
+      <div class="resp" id="r-jobs"></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ══════════════════════ JAVASCRIPT ══════════════════════ -->
+<script>
+const API = '';  // same origin — FastAPI serves this page
+
+let token   = localStorage.getItem('ls_token')   || '';
+let refresh = localStorage.getItem('ls_refresh')  || '';
+let me      = JSON.parse(localStorage.getItem('ls_me') || 'null');
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  auth:'Авторизация', dashboard:'Дашборд', products:'Продукты', locations:'Локации',
+  inventory:'Инвентарь', transfer:'Трансфер', deadstock:'Dead Stock',
+  reservations:'Резервы', forecast:'Прогноз и Low-Stock',
+  suppliers:'Поставщики', purchase_orders:'Заказы поставщикам',
+  users:'Пользователи', logs:'Audit Log', jobs:'Celery Jobs',
+};
+const ON_SHOW = {
+  dashboard: () => loadDashboard(),
+  products: () => loadProducts(),
+  locations: () => loadLocations(),
+  inventory: () => { fillDropdowns(); loadInv(); },
+  transfer: () => { fillDropdowns(); loadTransfers(); },
+  deadstock: () => loadDeadStock(),
+  reservations: () => { fillDropdowns(); loadReservations(); },
+  forecast: () => { fillDropdowns(); loadForecast(); loadLowStock(); },
+  suppliers: () => { loadSuppliers(); fillDropdowns(); },
+  purchase_orders: () => { fillDropdowns(); loadPOs(); },
+  users: () => loadUsers(),
+  logs: () => loadLogs(),
+};
+
+// ─── Global dropdown data ─────────────────────────────────────────────────────
+let _products = [];
+let _locations = [];
+let _suppliers_list = [];
+
+async function refreshCaches() {
+  const [pr, lr, sr] = await Promise.all([
+    req('GET', '/products?limit=100'),
+    req('GET', '/locations'),
+    req('GET', '/suppliers'),
+  ]);
+  if (pr.ok) _products = pr.data.items || [];
+  if (lr.ok) _locations = lr.data || [];
+  if (sr.ok) _suppliers_list = sr.data.items || [];
+  fillDropdowns();
+}
+
+function fillSel(id, options, emptyLabel = '— выбери —') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cur = el.value;
+  el.innerHTML = `<option value="">${emptyLabel}</option>` + options;
+  if (cur) el.value = cur;
+}
+
+function fillDropdowns() {
+  const prodOpts = _products.map(p =>
+    `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+  const locOpts = _locations.map(l =>
+    `<option value="${l.id}">${l.name}${l.city ? ' · ' + l.city : ''}</option>`).join('');
+  const locOptsAll = `<option value="">Все локации</option>` +
+    _locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  const supOpts = _suppliers_list.map(s =>
+    `<option value="${s.id}">${s.name}</option>`).join('');
+
+  // inventory set
+  fillSel('iv-pid', prodOpts, '— выбери товар —');
+  fillSel('iv-lid', locOpts, '— выбери локацию —');
+  // inventory filter
+  const ivFloc = document.getElementById('iv-floc');
+  if (ivFloc) { const cur = ivFloc.value; ivFloc.innerHTML = locOptsAll; if (cur) ivFloc.value = cur; }
+  // transfer
+  fillSel('tr-pid', prodOpts, '— выбери товар —');
+  fillSel('tr-from', locOpts, '— откуда —');
+  fillSel('tr-to', locOpts, '— куда —');
+  // reservations
+  fillSel('rs-pid', prodOpts, '— выбери товар —');
+  fillSel('rs-lid', locOpts, '— выбери локацию —');
+  // forecast
+  const fcLoc = document.getElementById('fc-loc');
+  if (fcLoc) { const cur = fcLoc.value; fcLoc.innerHTML = locOptsAll; if (cur) fcLoc.value = cur; }
+  // purchase orders
+  fillSel('po-sup', supOpts, '— выбери поставщика —');
+  fillSel('po-loc', locOpts, '— куда доставить —');
+  fillSel('po-item-pid', prodOpts, '— выбери товар —');
+}
+
+function show(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById(`section-${name}`)?.classList.add('active');
+  [...document.querySelectorAll('.nav-item')]
+    .find(b => b.getAttribute('onclick') === `show('${name}')`)
+    ?.classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[name] || name;
+  ON_SHOW[name]?.();
+}
+
+// ─── HTTP ────────────────────────────────────────────────────────────────────
+async function req(method, path, body = null) {
+  const h = { 'Content-Type': 'application/json' };
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  const r = await fetch(API + path, { method, headers: h, body: body ? JSON.stringify(body) : null });
+  const d = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, data: d };
+}
+
+function showResp(id, status, data) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'block';
+  const cls = status < 300 ? 'ok' : 'err';
+  el.innerHTML = `<span class="${cls}">HTTP ${status}</span>\n\n` + JSON.stringify(data, null, 2);
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const div = document.createElement('div');
+  div.className = `toast t-${type}`;
+  div.textContent = msg;
+  document.getElementById('toasts').appendChild(div);
+  setTimeout(() => div.remove(), 3500);
+}
+
+// ─── Token UI ────────────────────────────────────────────────────────────────
+function updateUI() {
+  const dot   = document.getElementById('tok-dot');
+  const label = document.getElementById('tok-label');
+  const logoutBtn = document.getElementById('btn-logout');
+  const sbUser = document.getElementById('sb-user');
+
+  if (token && me) {
+    dot.classList.add('on');
+    label.textContent = `${me.email} · ${me.role}`;
+    logoutBtn.style.display = 'inline-flex';
+    sbUser.innerHTML = `
+      <div style="color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:2px">${me.username}</div>
+      <div style="color:#475569;font-size:11px">${me.role} · tenant #${me.tenant_id}</div>
+    `;
+  } else {
+    dot.classList.remove('on');
+    label.textContent = 'нет токена';
+    logoutBtn.style.display = 'none';
+    sbUser.innerHTML = `<div style="color:#475569;font-size:12px">Не авторизован</div>`;
+  }
+}
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const r = await req('POST', '/auth/login', {
+    email: document.getElementById('li-email').value,
+    password: document.getElementById('li-pass').value,
+  });
+  showResp('r-auth', r.status, r.data);
+  if (!r.ok) { toast(r.data.detail || 'Неверный email или пароль', 'err'); return; }
+
+  token   = r.data.access_token;
+  refresh = r.data.refresh_token;
+  localStorage.setItem('ls_token',   token);
+  localStorage.setItem('ls_refresh', refresh);
+
+  const me_r = await req('GET', '/auth/me');
+  if (me_r.ok) {
+    me = me_r.data;
+    localStorage.setItem('ls_me', JSON.stringify(me));
+  }
+  updateUI();
+  toast('Добро пожаловать! 👋');
+  await refreshCaches();
+  show('dashboard');
+}
+
+async function doRegister() {
+  const r = await req('POST', '/auth/register', {
+    email:       document.getElementById('re-email').value,
+    username:    document.getElementById('re-user').value,
+    password:    document.getElementById('re-pass').value,
+    tenant_name: document.getElementById('re-tenant').value,
+  });
+  showResp('r-auth', r.status, r.data);
+  r.ok ? toast('Зарегистрирован! Проверь почту 📧') : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function doVerify() {
+  const tok = document.getElementById('ve-token').value.trim();
+  const r = await req('GET', `/auth/verify-email/${tok}`);
+  showResp('r-auth', r.status, r.data);
+  r.ok ? toast('Email подтверждён! Теперь войди.') : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function doForgot() {
+  const r = await req('POST', '/auth/forgot-password', { email: document.getElementById('fp-email').value });
+  showResp('r-auth', r.status, r.data);
+  toast('Письмо отправлено (если email существует)', 'info');
+}
+
+async function doReset() {
+  const r = await req('POST', '/auth/reset-password', {
+    token: document.getElementById('rp-token').value,
+    new_password: document.getElementById('rp-pass').value,
+  });
+  showResp('r-auth', r.status, r.data);
+  r.ok ? toast('Пароль изменён!') : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function doLogout() {
+  if (refresh) await req('POST', '/auth/logout', { refresh_token: refresh });
+  token = refresh = me = '';
+  localStorage.removeItem('ls_token');
+  localStorage.removeItem('ls_refresh');
+  localStorage.removeItem('ls_me');
+  updateUI();
+  show('auth');
+  toast('Вышел из системы', 'info');
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const r = await req('GET', '/dashboard');
+  if (!r.ok) { toast('Войди в систему чтобы увидеть дашборд', 'err'); return; }
+  const d = r.data;
+
+  document.getElementById('db-products').textContent = d.products ?? '—';
+  document.getElementById('db-units').textContent = (d.total_units ?? '—').toLocaleString('ru-RU');
+  document.getElementById('db-value').textContent = d.inventory_value != null
+    ? '₸' + d.inventory_value.toLocaleString('ru-RU') : '—';
+  document.getElementById('db-dead').textContent = d.dead_stock ?? '—';
+  document.getElementById('db-lowstock').textContent = d.low_stock ?? '—';
+  document.getElementById('db-pos').textContent = d.pending_purchase_orders ?? '—';
+
+  document.getElementById('db-transfers').innerHTML = (d.recent_transfers || []).length
+    ? (d.recent_transfers || []).map(t =>
+        `<tr><td><b>${t.product}</b></td><td>${t.qty}</td><td>${t.from}</td><td>${t.to}</td><td>${fmt(t.created_at)}</td></tr>`
+      ).join('')
+    : '<tr class="empty-row"><td colspan="5">Трансферов пока нет</td></tr>';
+
+  document.getElementById('db-events').innerHTML = (d.recent_events || []).length
+    ? (d.recent_events || []).map(e =>
+        `<tr><td><b>${e.action}</b></td><td>${e.entity_type}</td>
+         <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.details||''}">${e.details || '—'}</td></tr>`
+      ).join('')
+    : '<tr class="empty-row"><td colspan="3">Событий пока нет</td></tr>';
+}
+
+// ─── PRODUCTS ────────────────────────────────────────────────────────────────
+async function loadProducts() {
+  const cat = document.getElementById('pp-fcat')?.value;
+  const r = await req('GET', '/products' + (cat ? `?category=${encodeURIComponent(cat)}` : ''));
+  showResp('r-products', r.status, r.data);
+  if (!r.ok) return;
+  const rows = (r.data.items || []).map(p => {
+    const final = (p.price * (1 - p.current_discount / 100)).toFixed(2);
+    const discBadge = p.current_discount > 0
+      ? `<span class="badge b-warn">-${p.current_discount}%</span>` : '—';
+    const daysBadge = p.days_in_inventory > 30
+      ? `<span class="badge b-dead">${p.days_in_inventory}</span>`
+      : p.days_in_inventory;
+    return `<tr>
+      <td>${p.id}</td>
+      <td><b>${p.name}</b></td>
+      <td><code>${p.sku}</code></td>
+      <td>${p.category || '—'}</td>
+      <td>₸${p.price.toFixed(2)}</td>
+      <td>${discBadge}</td>
+      <td>${daysBadge}</td>
+      <td><b>₸${final}</b></td>
+      <td class="flex gap2">
+        <button class="btn btn-danger btn-sm" onclick="delProduct(${p.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tb-products').innerHTML =
+    rows || '<tr class="empty-row"><td colspan="9">Нет продуктов</td></tr>';
+}
+
+async function createProduct() {
+  const r = await req('POST', '/products', {
+    name:      document.getElementById('pp-name').value,
+    sku:       document.getElementById('pp-sku').value,
+    category:  document.getElementById('pp-cat').value || null,
+    price:     parseFloat(document.getElementById('pp-price').value),
+    min_stock: parseInt(document.getElementById('pp-min').value) || 0,
+  });
+  showResp('r-products', r.status, r.data);
+  if (r.ok) { toast('Продукт создан!'); loadProducts(); refreshCaches(); }
+  else toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function delProduct(id) {
+  if (!confirm('Деактивировать продукт #' + id + '?')) return;
+  const r = await req('DELETE', `/products/${id}`);
+  showResp('r-products', r.status, r.data);
+  r.ok ? (toast('Деактивирован'), loadProducts()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+// ─── LOCATIONS ───────────────────────────────────────────────────────────────
+async function loadLocations() {
+  const r = await req('GET', '/locations');
+  showResp('r-locs', r.status, r.data);
+  if (!r.ok) return;
+  const rows = (r.data || []).map(l =>
+    `<tr><td>${l.id}</td><td><b>${l.name}</b></td><td>${l.address || '—'}</td><td>${l.city || '—'}</td>
+     <td><button class="btn btn-danger btn-sm" onclick="delLoc(${l.id})">✕</button></td></tr>`
+  ).join('');
+  document.getElementById('tb-locs').innerHTML = rows || '<tr class="empty-row"><td colspan="5">Нет локаций</td></tr>';
+}
+
+async function createLocation() {
+  const r = await req('POST', '/locations', {
+    name:    document.getElementById('ll-name').value,
+    address: document.getElementById('ll-addr').value || null,
+    city:    document.getElementById('ll-city').value || null,
+  });
+  showResp('r-locs', r.status, r.data);
+  if (r.ok) { toast('Локация создана!'); loadLocations(); refreshCaches(); }
+  else toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function delLoc(id) {
+  if (!confirm('Деактивировать локацию #' + id + '?')) return;
+  const r = await req('DELETE', `/locations/${id}`);
+  showResp('r-locs', r.status, r.data);
+  r.ok ? (toast('Деактивирована'), loadLocations()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+// ─── INVENTORY ───────────────────────────────────────────────────────────────
+async function loadInv() {
+  const loc = document.getElementById('iv-floc')?.value;
+  const r = await req('GET', '/inventory' + (loc ? `?location_id=${loc}` : ''));
+  showResp('r-inv', r.status, r.data);
+  if (!r.ok) return;
+  const rows = (r.data.items || []).map(i =>
+    `<tr><td>${i.id}</td><td>${i.product_id}</td><td>${i.location_id}</td>
+     <td><b>${i.quantity}</b></td><td>${fmt(i.updated_at)}</td></tr>`
+  ).join('');
+  document.getElementById('tb-inv').innerHTML = rows || '<tr class="empty-row"><td colspan="5">Инвентарь пуст</td></tr>';
+}
+
+async function setInv() {
+  const r = await req('POST', '/inventory/set', {
+    product_id:  parseInt(document.getElementById('iv-pid').value),
+    location_id: parseInt(document.getElementById('iv-lid').value),
+    quantity:    parseInt(document.getElementById('iv-qty').value),
+  });
+  showResp('r-inv', r.status, r.data);
+  r.ok ? (toast('Инвентарь обновлён!'), loadInv()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+// ─── TRANSFER ────────────────────────────────────────────────────────────────
+async function doTransfer() {
+  const r = await req('POST', '/inventory/transfer', {
+    product_id:       parseInt(document.getElementById('tr-pid').value),
+    from_location_id: parseInt(document.getElementById('tr-from').value),
+    to_location_id:   parseInt(document.getElementById('tr-to').value),
+    quantity:         parseInt(document.getElementById('tr-qty').value),
+  });
+  showResp('r-transfer', r.status, r.data);
+  if (r.ok) { toast('Трансфер выполнен! Уведомление на почте 📧'); loadTransfers(); }
+  else toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function loadTransfers() {
+  const r = await req('GET', '/inventory/transfers');
+  showResp('r-transfer', r.status, r.data);
+  if (!r.ok) return;
+  const rows = (r.data.items || []).map(t =>
+    `<tr><td>${t.id}</td><td>${t.product_id}</td><td>${t.from_location_id}</td>
+     <td>${t.to_location_id}</td><td><b>${t.quantity}</b></td><td>${fmt(t.created_at)}</td></tr>`
+  ).join('');
+  document.getElementById('tb-transfers').innerHTML = rows || '<tr class="empty-row"><td colspan="6">Нет трансферов</td></tr>';
+}
+
+// ─── DEAD STOCK ──────────────────────────────────────────────────────────────
+async function loadDeadStock() {
+  const r = await req('GET', '/inventory/dead-stock');
+  showResp('r-dead', r.status, r.data);
+  if (!r.ok) return;
+  const items = r.data.items || [];
+  if (!items.length) {
+    document.getElementById('tb-dead').innerHTML = '<tr class="empty-row"><td colspan="7">Нет залежавшихся продуктов 🎉</td></tr>';
+    return;
+  }
+  document.getElementById('tb-dead').innerHTML = items.map(p => {
+    const final = (p.price * (1 - p.current_discount / 100)).toFixed(2);
+    return `<tr>
+      <td>${p.id}</td><td><b>${p.name}</b></td><td><code>${p.sku}</code></td>
+      <td><span class="badge b-dead">${p.days_in_inventory} дней</span></td>
+      <td><span class="badge b-warn">-${p.current_discount}%</span></td>
+      <td><s style="color:#94a3b8">₸${p.price.toFixed(2)}</s></td>
+      <td><b>₸${final}</b></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── ADMIN: USERS ─────────────────────────────────────────────────────────────
+async function createUser() {
+  const r = await req('POST', '/admin/users', {
+    email:    document.getElementById('cu-email').value,
+    username: document.getElementById('cu-user').value,
+    password: document.getElementById('cu-pass').value,
+    role:     document.getElementById('cu-role').value,
+  });
+  showResp('r-users', r.status, r.data);
+  if (r.ok) {
+    toast('Сотрудник создан! Приглашение отправлено на почту 📧');
+    document.getElementById('cu-email').value = '';
+    document.getElementById('cu-user').value  = '';
+    document.getElementById('cu-pass').value  = '';
+    loadUsers();
+  } else {
+    toast(r.data.detail || 'Ошибка', 'err');
+  }
+}
+
+async function loadUsers() {
+  const r = await req('GET', '/admin/users');
+  showResp('r-users', r.status, r.data);
+  if (!r.ok) { toast(r.data.detail || 'Нет доступа (нужна роль Admin)', 'err'); return; }
+  document.getElementById('tb-users').innerHTML = (r.data || []).map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td>${u.email}</td>
+      <td><b>${u.username}</b></td>
+      <td><span class="badge b-${u.role}">${u.role}</span></td>
+      <td>${u.is_verified ? '<span class="badge b-ok">✓ да</span>' : '<span class="badge b-warn">✗ нет</span>'}</td>
+      <td>${u.is_active ? '<span class="badge b-ok">активен</span>' : '<span class="badge b-dead">откл.</span>'}</td>
+      <td class="flex gap2 items-center">
+        <select id="role-sel-${u.id}" style="width:auto;padding:4px 8px;font-size:12px">
+          <option ${u.role==='staff'   ? 'selected':''} value="staff">staff</option>
+          <option ${u.role==='manager' ? 'selected':''} value="manager">manager</option>
+          <option ${u.role==='admin'   ? 'selected':''} value="admin">admin</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="updateRole(${u.id})">Сохранить</button>
+      </td>
+      <td>
+        ${u.is_active ? `<button class="btn btn-danger btn-sm" onclick="deactivateUser(${u.id})">Откл.</button>` : '—'}
+      </td>
+    </tr>`).join('') || '<tr class="empty-row"><td colspan="8">Нет пользователей</td></tr>';
+}
+
+async function updateRole(uid) {
+  const role = document.getElementById(`role-sel-${uid}`).value;
+  const r = await req('PUT', `/admin/users/${uid}/role`, { role });
+  showResp('r-users', r.status, r.data);
+  r.ok ? (toast('Роль обновлена'), loadUsers()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function deactivateUser(uid) {
+  if (!confirm('Отключить пользователя #' + uid + '?')) return;
+  const r = await req('DELETE', `/admin/users/${uid}`);
+  showResp('r-users', r.status, r.data);
+  r.ok ? (toast('Пользователь отключён'), loadUsers()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+// ─── ADMIN: LOGS ─────────────────────────────────────────────────────────────
+async function loadLogs() {
+  const r = await req('GET', '/admin/audit-logs');
+  showResp('r-logs', r.status, r.data);
+  if (!r.ok) { toast(r.data.detail || 'Нет доступа', 'err'); return; }
+  const rows = (r.data || []).map(l =>
+    `<tr><td>${l.id}</td><td><b>${l.action}</b></td><td>${l.entity_type}</td>
+     <td>${l.entity_id || '—'}</td>
+     <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.details||''}">${l.details || '—'}</td>
+     <td>${fmt(l.created_at)}</td></tr>`
+  ).join('');
+  document.getElementById('tb-logs').innerHTML = rows || '<tr class="empty-row"><td colspan="6">Логов пока нет</td></tr>';
+}
+
+// ─── ADMIN: JOBS ─────────────────────────────────────────────────────────────
+async function triggerDecay() {
+  const pct = document.getElementById('jb-pct').value || 10;
+  const r = await req('POST', `/admin/trigger-decay?decay_percent=${pct}`);
+  showResp('r-jobs', r.status, r.data);
+  r.ok ? toast('Задача Celery поставлена в очередь!') : toast(r.data.detail || 'Нет доступа', 'err');
+}
+
+async function triggerIncrement() {
+  const r = await req('POST', '/admin/trigger-increment-days');
+  showResp('r-jobs', r.status, r.data);
+  r.ok ? toast('Задача Celery поставлена в очередь!') : toast(r.data.detail || 'Нет доступа', 'err');
+}
+
+// ─── RESERVATIONS ────────────────────────────────────────────────────────────
+async function loadReservations() {
+  const r = await req('GET', '/reservations');
+  showResp('r-reservations', r.status, r.data);
+  if (!r.ok) return;
+  const rows = (r.data.items || []).map(rv => {
+    const statusBadge = rv.status === 'active'
+      ? '<span class="badge b-ok">active</span>'
+      : rv.status === 'released'
+        ? '<span class="badge b-manager">released</span>'
+        : '<span class="badge b-dead">expired</span>';
+    return `<tr>
+      <td>${rv.id}</td><td>${rv.product_id}</td><td>${rv.location_id}</td>
+      <td><b>${rv.quantity}</b></td><td>${statusBadge}</td><td>${fmt(rv.expires_at)}</td>
+      <td>${rv.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="releaseReservation(${rv.id})">Снять</button>` : '—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tb-reservations').innerHTML =
+    rows || '<tr class="empty-row"><td colspan="7">Нет активных резервов</td></tr>';
+}
+
+async function createReservation() {
+  const r = await req('POST', '/reservations', {
+    product_id:  parseInt(document.getElementById('rs-pid').value),
+    location_id: parseInt(document.getElementById('rs-lid').value),
+    quantity:    parseInt(document.getElementById('rs-qty').value),
+    ttl_minutes: parseInt(document.getElementById('rs-ttl').value) || 30,
+  });
+  showResp('r-reservations', r.status, r.data);
+  r.ok ? (toast('Резерв создан! 🔖'), loadReservations()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function releaseReservation(id) {
+  if (!confirm('Снять резерв #' + id + '?')) return;
+  const r = await req('DELETE', `/reservations/${id}`);
+  showResp('r-reservations', r.status, r.data);
+  r.ok ? (toast('Резерв снят'), loadReservations()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+// ─── FORECAST ────────────────────────────────────────────────────────────────
+async function loadForecast() {
+  const w = document.getElementById('fc-window')?.value || 30;
+  const t = document.getElementById('fc-thresh')?.value || 7;
+  const loc = document.getElementById('fc-loc')?.value;
+  let url = `/inventory/forecast?days_window=${w}&reorder_threshold_days=${t}`;
+  if (loc) url += `&location_id=${loc}`;
+  const r = await req('GET', url);
+  showResp('r-forecast', r.status, r.data);
+  if (!r.ok) { toast(r.data.detail || 'Ошибка', 'err'); return; }
+  const items = r.data.items || [];
+  document.getElementById('tb-forecast').innerHTML = items.length ? items.map(f => `<tr>
+    <td><b>${f.product_name}</b></td>
+    <td><code>${f.sku}</code></td>
+    <td>${f.location_id}</td>
+    <td>${f.current_quantity}</td>
+    <td>${f.avg_daily_consumption}</td>
+    <td>${f.days_until_stockout ?? '∞'}</td>
+    <td><b>${f.suggested_reorder_qty}</b></td>
+    <td>${f.needs_reorder ? '<span class="badge b-dead">ЗАКАЗАТЬ</span>' : '<span class="badge b-ok">OK</span>'}</td>
+  </tr>`).join('') : '<tr class="empty-row"><td colspan="8">Нет данных для прогноза 🎉</td></tr>';
+}
+
+async function loadLowStock() {
+  const r = await req('GET', '/inventory/low-stock');
+  if (!r.ok) return;
+  const items = r.data.items || [];
+  document.getElementById('tb-lowstock').innerHTML = items.length ? items.map(i => `<tr>
+    <td><b>${i.product_name}</b></td><td><code>${i.sku}</code></td><td>${i.location_id}</td>
+    <td><span class="badge b-dead">${i.current_quantity}</span></td>
+    <td>${i.min_stock}</td>
+    <td><b style="color:#dc2626">-${i.shortage}</b></td>
+  </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Все товары в норме 🎉</td></tr>';
+}
+
+// ─── SUPPLIERS ───────────────────────────────────────────────────────────────
+async function loadSuppliers() {
+  const r = await req('GET', '/suppliers');
+  showResp('r-suppliers', r.status, r.data);
+  if (!r.ok) return;
+  const rows = (r.data.items || []).map(s =>
+    `<tr><td>${s.id}</td><td><b>${s.name}</b></td><td>${s.email || '—'}</td>
+     <td>${s.phone || '—'}</td><td>${s.lead_time_days}</td>
+     <td><button class="btn btn-danger btn-sm" onclick="delSupplier(${s.id})">✕</button></td></tr>`
+  ).join('');
+  document.getElementById('tb-suppliers').innerHTML =
+    rows || '<tr class="empty-row"><td colspan="6">Нет поставщиков</td></tr>';
+}
+
+async function createSupplier() {
+  const r = await req('POST', '/suppliers', {
+    name:          document.getElementById('sp-name').value,
+    email:         document.getElementById('sp-email').value || null,
+    phone:         document.getElementById('sp-phone').value || null,
+    lead_time_days: parseInt(document.getElementById('sp-lead').value) || 7,
+  });
+  showResp('r-suppliers', r.status, r.data);
+  if (r.ok) { toast('Поставщик создан!'); loadSuppliers(); refreshCaches(); }
+  else toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function delSupplier(id) {
+  if (!confirm('Деактивировать поставщика #' + id + '?')) return;
+  const r = await req('DELETE', `/suppliers/${id}`);
+  showResp('r-suppliers', r.status, r.data);
+  r.ok ? (toast('Деактивирован'), loadSuppliers()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+// ─── PURCHASE ORDERS ─────────────────────────────────────────────────────────
+async function loadPOs() {
+  const st = document.getElementById('po-fst')?.value;
+  const r = await req('GET', '/purchase-orders' + (st ? `?status=${st}` : ''));
+  showResp('r-pos', r.status, r.data);
+  if (!r.ok) return;
+  const statusColors = { draft:'b-staff', sent:'b-manager', confirmed:'b-ok', received:'b-ok', cancelled:'b-dead' };
+  const rows = (r.data.items || []).map(po => {
+    const itemCount = (po.items || []).length;
+    const actions = [];
+    if (po.status === 'draft') actions.push(`<button class="btn btn-primary btn-sm" onclick="sendPO(${po.id})">Отправить</button>`);
+    if (po.status === 'sent' || po.status === 'confirmed') {
+      actions.push(`<button class="btn btn-success btn-sm" onclick="showReceivePO(${po.id})">Принять</button>`);
+    }
+    if (po.status !== 'received' && po.status !== 'cancelled') {
+      actions.push(`<button class="btn btn-danger btn-sm" onclick="cancelPO(${po.id})">Отменить</button>`);
+    }
+    return `<tr>
+      <td><b>#${po.id}</b></td>
+      <td>${po.supplier_id}</td>
+      <td><span class="badge ${statusColors[po.status] || 'b-staff'}">${po.status}</span></td>
+      <td>${po.location_id}</td>
+      <td>${itemCount} поз.</td>
+      <td>${fmt(po.created_at)}</td>
+      <td class="flex gap2">${actions.join('')}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tb-pos').innerHTML =
+    rows || '<tr class="empty-row"><td colspan="7">Нет заказов</td></tr>';
+}
+
+// PO item accumulator
+let _poItems = [];
+
+function poAddItem() {
+  const pidEl  = document.getElementById('po-item-pid');
+  const qtyEl  = document.getElementById('po-item-qty');
+  const priceEl = document.getElementById('po-item-price');
+
+  const pid   = parseInt(pidEl.value);
+  const qty   = parseInt(qtyEl.value);
+  const price = parseFloat(priceEl.value);
+
+  if (!pid)           { toast('Выбери товар', 'err'); return; }
+  if (!qty || qty < 1){ toast('Укажи количество', 'err'); return; }
+  if (!price || price <= 0){ toast('Укажи цену', 'err'); return; }
+
+  const product = _products.find(p => p.id === pid);
+  _poItems.push({ product_id: pid, quantity_ordered: qty, unit_price: price, _name: product?.name || `#${pid}` });
+
+  // clear inputs
+  pidEl.value = ''; qtyEl.value = ''; priceEl.value = '';
+  renderPOItems();
+}
+
+function poRemoveItem(idx) {
+  _poItems.splice(idx, 1);
+  renderPOItems();
+}
+
+function renderPOItems() {
+  const listEl = document.getElementById('po-items-list');
+  const tbody  = document.getElementById('po-items-tbody');
+  const totalEl = document.getElementById('po-items-total');
+
+  if (!_poItems.length) { listEl.style.display = 'none'; return; }
+  listEl.style.display = 'block';
+
+  let total = 0;
+  tbody.innerHTML = _poItems.map((item, i) => {
+    const sum = item.quantity_ordered * item.unit_price;
+    total += sum;
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9"><b>${item._name}</b></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9">${item.quantity_ordered}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9">₸${item.unit_price.toFixed(2)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9"><b>₸${sum.toFixed(2)}</b></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f1f5f9">
+        <button class="btn btn-danger btn-sm" onclick="poRemoveItem(${i})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  totalEl.textContent = `Итого: ₸${total.toFixed(2)}`;
+}
+
+async function createPO() {
+  if (!_poItems.length) { toast('Добавь хотя бы одну позицию', 'err'); return; }
+  const supId = parseInt(document.getElementById('po-sup').value);
+  const locId = parseInt(document.getElementById('po-loc').value);
+  if (!supId) { toast('Выбери поставщика', 'err'); return; }
+  if (!locId) { toast('Выбери локацию доставки', 'err'); return; }
+
+  const items = _poItems.map(({ product_id, quantity_ordered, unit_price }) =>
+    ({ product_id, quantity_ordered, unit_price }));
+
+  const r = await req('POST', '/purchase-orders', {
+    supplier_id: supId,
+    location_id: locId,
+    notes: document.getElementById('po-notes').value || null,
+    items,
+  });
+  showResp('r-pos', r.status, r.data);
+  if (r.ok) {
+    toast('Заказ создан! Статус: draft 📋');
+    _poItems = [];
+    renderPOItems();
+    document.getElementById('po-notes').value = '';
+    loadPOs();
+  } else {
+    toast(r.data.detail || 'Ошибка', 'err');
+  }
+}
+
+async function sendPO(id) {
+  if (!confirm(`Отправить PO #${id} поставщику?`)) return;
+  const r = await req('POST', `/purchase-orders/${id}/send`);
+  showResp('r-pos', r.status, r.data);
+  r.ok ? (toast('PO отправлен! Email поставщику 📧'), loadPOs()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+async function showReceivePO(id) {
+  // Load PO details to know which products to receive
+  const r = await req('GET', `/purchase-orders/${id}`);
+  if (!r.ok) { toast('Не удалось загрузить PO', 'err'); return; }
+  const po = r.data;
+  const poItems = po.items || [];
+
+  // Build a simple modal-like overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center';
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'background:white;border-radius:12px;padding:24px;min-width:420px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+
+  const rows = poItems.map(item => {
+    const prod = _products.find(p => p.id === item.product_id);
+    const name = prod ? prod.name : `Товар #${item.product_id}`;
+    return `<tr>
+      <td style="padding:8px;border-bottom:1px solid #f1f5f9"><b>${name}</b></td>
+      <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:#6b7280">Заказано: ${item.quantity_ordered}</td>
+      <td style="padding:8px;border-bottom:1px solid #f1f5f9">
+        <input type="number" id="recv-${item.product_id}" value="${item.quantity_ordered - item.quantity_received}"
+          min="0" max="${item.quantity_ordered}"
+          style="width:80px;padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px" />
+      </td>
+    </tr>`;
+  }).join('');
+
+  modal.innerHTML = `
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">📦 Приёмка PO #${id}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">
+      <thead><tr>
+        <th style="text-align:left;padding:6px 8px;background:#f8fafc;border-bottom:2px solid #e2e8f0">Товар</th>
+        <th style="text-align:left;padding:6px 8px;background:#f8fafc;border-bottom:2px solid #e2e8f0">Статус</th>
+        <th style="text-align:left;padding:6px 8px;background:#f8fafc;border-bottom:2px solid #e2e8f0">Принять</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" id="recv-cancel">Отмена</button>
+      <button class="btn btn-success" id="recv-confirm">✓ Принять товары</button>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#recv-cancel').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.querySelector('#recv-confirm').onclick = async () => {
+    const items = poItems.map(item => ({
+      product_id: item.product_id,
+      quantity_received: parseInt(document.getElementById(`recv-${item.product_id}`)?.value) || 0,
+    })).filter(i => i.quantity_received > 0);
+
+    if (!items.length) { toast('Укажи количество хотя бы для одного товара', 'err'); return; }
+
+    const r2 = await req('POST', `/purchase-orders/${id}/receive`, { items });
+    showResp('r-pos', r2.status, r2.data);
+    overlay.remove();
+    if (r2.ok) { toast('Приёмка выполнена! Инвентарь обновлён ✓'); loadPOs(); }
+    else toast(r2.data.detail || 'Ошибка', 'err');
+  };
+}
+
+async function cancelPO(id) {
+  if (!confirm(`Отменить PO #${id}?`)) return;
+  const r = await req('POST', `/purchase-orders/${id}/cancel`);
+  showResp('r-pos', r.status, r.data);
+  r.ok ? (toast('Заказ отменён'), loadPOs()) : toast(r.data.detail || 'Ошибка', 'err');
+}
+
+// ─── Util ─────────────────────────────────────────────────────────────────────
+function fmt(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+// Init
+updateUI();
+if (token && me) {
+  refreshCaches();
+  show('dashboard');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+LeanStock — Final Submission Checklist
+=======================================
+
+[ ] Application is LIVE on dashboard.deployrocks.com (or Render.com) with working public URL
+[ ] docker compose up boots entire stack (backend + frontend + postgres + redis) locally
+[ ] pytest runs and passes with full test suite
+[ ] Swagger UI / API docs is accessible on the deployed URL (/docs) and covers ALL endpoints
+[ ] All auth endpoints work on deployed frontend: register, login, logout, refresh, RBAC protected routes
+[ ] Email verification sends REAL email on signup using Gmail SMTP
+[ ] Password reset sends REAL email with working reset link
+[ ] At least 3 business event emails are implemented and queued via background worker:
+      1. Inventory transfer notification (BackgroundTasks after transfer)
+      2. Dead stock decay alert to managers (Celery dead_stock_decay task)
+      3. Low stock alert to managers (Celery check_low_stock task)
+      4. Purchase order confirmation to supplier (BackgroundTasks after PO sent)
+[ ] Frontend demo consumes real backend API and demonstrates all major workflows
+[ ] All business logic endpoints from blueprint are implemented and testable:
+      - Multi-tenant product catalog (CRUD)
+      - Atomic inter-location transfers (SELECT FOR UPDATE)
+      - Dead stock decay cron (Celery Beat every 72h)
+      - Predictive reordering / forecasting endpoint (moving average)
+      - Reservation system with Redis locks
+      - Supplier CRUD
+      - Purchase order workflow (create → send → receive)
+      - Low-stock alerts
+[ ] Background workers are running and processing jobs (Celery worker + beat)
+[ ] No raw SQL queries exist in codebase (ORM only — SQLModel throughout)
+[ ] Video link is accessible and 4-6 minutes long
+[ ] Postman collection with ALL endpoints loaded in separate tabs ready for defense
+[ ] I am the sole author of the architectural decisions in this code
+
+Track: LeanStock
+Framework: FastAPI (Python)
+ORM: SQLModel
+Database: PostgreSQL 15
+Cache/Queue: Redis (rate limiting + Celery broker + reservation Redis locks)

@@ -1,0 +1,783 @@
+openapi: "3.1.0"
+info:
+  title: LeanStock API
+  version: "2.0.0"
+  description: |
+    Multi-tenant inventory management system with atomic transfers,
+    dead stock decay, predictive reordering, reservation system,
+    and full supplier/purchase-order workflows.
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://leanstock.onrender.com
+    description: Production (Render.com)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        items:
+          type: array
+        next_cursor:
+          type: integer
+          nullable: true
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ── Health ────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              example: { status: "ok", service: "LeanStock API" }
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user and company
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              email: "ceo@mycompany.com"
+              username: "johndoe"
+              password: "secret123"
+              tenant_name: "MyCompany"
+      responses:
+        "201":
+          description: Registered — verification email sent
+        "409":
+          description: Email or username already taken
+        "422":
+          description: Password too short
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive JWT tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              email: "ceo@mycompany.com"
+              password: "secret123"
+      responses:
+        "200":
+          description: Access + refresh tokens
+          content:
+            application/json:
+              example:
+                access_token: "eyJ..."
+                refresh_token: "abc..."
+                token_type: "bearer"
+        "401":
+          description: Invalid credentials
+        "403":
+          description: Email not verified or account deactivated
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              refresh_token: "abc..."
+      responses:
+        "200":
+          description: New access token
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              refresh_token: "abc..."
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/verify-email/{token}:
+    get:
+      tags: [Auth]
+      summary: Verify email via token from link
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Email verified
+        "400":
+          description: Token expired
+        "404":
+          description: Invalid token
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              email: "ceo@mycompany.com"
+      responses:
+        "200":
+          description: Always 200 (security — does not reveal if email exists)
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Complete password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              token: "reset-token-from-email"
+              new_password: "newpassword123"
+      responses:
+        "200":
+          description: Password reset successfully
+        "400":
+          description: Invalid or expired token
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user info
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              example:
+                id: 1
+                email: "ceo@mycompany.com"
+                username: "johndoe"
+                role: "admin"
+                tenant_id: 1
+                is_verified: true
+
+  # ── Products ───────────────────────────────────────────────────────────────
+  /products:
+    get:
+      tags: [Products]
+      summary: List products (cursor pagination, category filter)
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Paginated product list
+          content:
+            application/json:
+              example:
+                items: [{id: 1, name: "Widget Pro", sku: "WGT-001", price: 999.99, current_discount: 0.0, days_in_inventory: 0, min_stock: 10}]
+                next_cursor: null
+
+    post:
+      tags: [Products]
+      summary: Create product (manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Widget Pro"
+              sku: "WGT-001"
+              category: "electronics"
+              price: 999.99
+              min_stock: 10
+      responses:
+        "201":
+          description: Product created
+        "409":
+          description: SKU already exists in tenant
+
+  /products/{product_id}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product details
+        "404":
+          description: Not found
+    put:
+      tags: [Products]
+      summary: Update product (manager+)
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Widget Pro v2"
+              price: 1099.99
+      responses:
+        "200":
+          description: Updated product
+    delete:
+      tags: [Products]
+      summary: Soft-delete product (manager+)
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deactivated
+
+  # ── Locations ──────────────────────────────────────────────────────────────
+  /locations:
+    get:
+      tags: [Locations]
+      summary: List active locations
+      responses:
+        "200":
+          description: Location list
+    post:
+      tags: [Locations]
+      summary: Create location (manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Main Warehouse"
+              address: "123 Storage St"
+              city: "Almaty"
+      responses:
+        "201":
+          description: Created
+
+  /locations/{location_id}:
+    get:
+      tags: [Locations]
+      summary: Get location by ID
+      parameters:
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Location details
+    delete:
+      tags: [Locations]
+      summary: Soft-delete location (manager+)
+      parameters:
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deactivated
+
+  # ── Inventory ──────────────────────────────────────────────────────────────
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: List inventory (cursor pagination)
+      parameters:
+        - name: location_id
+          in: query
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Inventory items
+
+  /inventory/set:
+    post:
+      tags: [Inventory]
+      summary: Set inventory quantity (manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              product_id: 1
+              location_id: 1
+              quantity: 100
+      responses:
+        "201":
+          description: Inventory updated
+
+  /inventory/transfer:
+    post:
+      tags: [Inventory]
+      summary: Atomic transfer between locations (SELECT FOR UPDATE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              product_id: 1
+              from_location_id: 1
+              to_location_id: 2
+              quantity: 30
+      responses:
+        "200":
+          description: Transfer completed
+        "409":
+          description: Insufficient stock
+
+  /inventory/transfers:
+    get:
+      tags: [Inventory]
+      summary: Transfer history (cursor pagination, newest first)
+      responses:
+        "200":
+          description: Transfer list
+
+  /inventory/dead-stock:
+    get:
+      tags: [Inventory]
+      summary: Products with days_in_inventory > 30
+      responses:
+        "200":
+          description: Dead stock items
+
+  /inventory/forecast:
+    get:
+      tags: [Inventory]
+      summary: Predictive reorder suggestions (moving average)
+      parameters:
+        - name: location_id
+          in: query
+          schema:
+            type: integer
+        - name: days_window
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: reorder_threshold_days
+          in: query
+          schema:
+            type: integer
+            default: 7
+      responses:
+        "200":
+          description: Forecast and reorder suggestions
+          content:
+            application/json:
+              example:
+                count: 2
+                reorder_threshold_days: 7
+                items:
+                  - product_id: 1
+                    product_name: "Widget Pro"
+                    sku: "WGT-001"
+                    location_id: 1
+                    current_quantity: 15
+                    min_stock: 10
+                    avg_daily_consumption: 2.5
+                    days_until_stockout: 6.0
+                    needs_reorder: true
+                    suggested_reorder_qty: 20
+                    analysis_window_days: 30
+
+  /inventory/low-stock:
+    get:
+      tags: [Inventory]
+      summary: Products at or below min_stock threshold
+      responses:
+        "200":
+          description: Low stock items
+
+  # ── Reservations ───────────────────────────────────────────────────────────
+  /reservations:
+    post:
+      tags: [Reservations]
+      summary: Reserve stock with Redis lock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              product_id: 1
+              location_id: 1
+              quantity: 10
+              ttl_minutes: 30
+      responses:
+        "201":
+          description: Reservation created
+        "409":
+          description: Insufficient available stock or lock conflict
+    get:
+      tags: [Reservations]
+      summary: List reservations
+      parameters:
+        - name: product_id
+          in: query
+          schema:
+            type: integer
+        - name: location_id
+          in: query
+          schema:
+            type: integer
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Reservation list
+
+  /reservations/{reservation_id}:
+    delete:
+      tags: [Reservations]
+      summary: Release reservation
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Released
+
+  /reservations/expire-old:
+    post:
+      tags: [Reservations]
+      summary: Mark expired reservations (also runs via Celery every 5min)
+      responses:
+        "200":
+          description: Expired count
+
+  # ── Suppliers ──────────────────────────────────────────────────────────────
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      summary: List active suppliers
+      responses:
+        "200":
+          description: Supplier list
+    post:
+      tags: [Suppliers]
+      summary: Create supplier (manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "ТОО Снабжение"
+              email: "orders@supplier.com"
+              phone: "+7 777 123 4567"
+              lead_time_days: 7
+      responses:
+        "201":
+          description: Created
+
+  /suppliers/{supplier_id}:
+    get:
+      tags: [Suppliers]
+      summary: Get supplier
+      parameters:
+        - name: supplier_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Supplier details
+    put:
+      tags: [Suppliers]
+      summary: Update supplier (manager+)
+      parameters:
+        - name: supplier_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              lead_time_days: 5
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Suppliers]
+      summary: Soft-delete supplier (manager+)
+      parameters:
+        - name: supplier_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deactivated
+
+  # ── Purchase Orders ────────────────────────────────────────────────────────
+  /purchase-orders:
+    get:
+      tags: [Purchase Orders]
+      summary: List purchase orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, sent, confirmed, received, cancelled]
+      responses:
+        "200":
+          description: PO list with items
+    post:
+      tags: [Purchase Orders]
+      summary: Create purchase order (draft, manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              supplier_id: 1
+              location_id: 1
+              notes: "Urgent restock"
+              items:
+                - product_id: 1
+                  quantity_ordered: 50
+                  unit_price: 100.00
+      responses:
+        "201":
+          description: PO created in draft
+
+  /purchase-orders/{po_id}:
+    get:
+      tags: [Purchase Orders]
+      summary: Get PO with items
+      parameters:
+        - name: po_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PO details
+
+  /purchase-orders/{po_id}/send:
+    post:
+      tags: [Purchase Orders]
+      summary: Send PO to supplier (draft → sent, sends email)
+      parameters:
+        - name: po_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PO sent, email queued
+
+  /purchase-orders/{po_id}/receive:
+    post:
+      tags: [Purchase Orders]
+      summary: Receive goods — updates inventory atomically
+      parameters:
+        - name: po_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              items:
+                - product_id: 1
+                  quantity_received: 50
+      responses:
+        "200":
+          description: Received, inventory updated
+
+  /purchase-orders/{po_id}/cancel:
+    post:
+      tags: [Purchase Orders]
+      summary: Cancel PO
+      parameters:
+        - name: po_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+
+  # ── Admin ──────────────────────────────────────────────────────────────────
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List all users in tenant (admin only)
+      responses:
+        "200":
+          description: User list
+    post:
+      tags: [Admin]
+      summary: Create user and send invite email (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              email: "manager@company.com"
+              username: "johnmanager"
+              password: "secret123"
+              role: "manager"
+      responses:
+        "201":
+          description: User created, invite email sent
+
+  /admin/users/{user_id}/role:
+    put:
+      tags: [Admin]
+      summary: Update user role (admin only)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              role: "manager"
+      responses:
+        "200":
+          description: Role updated
+
+  /admin/users/{user_id}:
+    delete:
+      tags: [Admin]
+      summary: Deactivate user (admin only)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deactivated
+
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      summary: Get audit logs (last 200, admin only)
+      responses:
+        "200":
+          description: Audit log list
+
+  /admin/trigger-decay:
+    post:
+      tags: [Admin]
+      summary: Manually trigger dead stock decay Celery task
+      parameters:
+        - name: decay_percent
+          in: query
+          schema:
+            type: number
+            default: 10.0
+      responses:
+        "200":
+          description: Task queued
+
+  /admin/trigger-increment-days:
+    post:
+      tags: [Admin]
+      summary: Manually trigger daily increment Celery task
+      responses:
+        "200":
+          description: Task queued
