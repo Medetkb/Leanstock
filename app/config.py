@@ -8,10 +8,18 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     # --- JWT токены ---
-    SECRET_KEY: str
+    SECRET_KEY: str = "dev-secret-key"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # DeployRocks provides DATABASE_URL as postgres:// — SQLAlchemy needs postgresql://
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def fix_db_url(cls, v):
+        if isinstance(v, str) and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
 
     # DeployRocks auto-generates base64 secrets for vars with "TOKEN" in name.
     # These validators fall back to defaults if the injected value isn't an integer.
