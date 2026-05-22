@@ -64,7 +64,10 @@ def frontend():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    print(f"UNHANDLED ERROR: {type(exc).__name__}: {exc}")
+    print(traceback.format_exc())
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error"},
+        content={"detail": f"{type(exc).__name__}: {str(exc)}"},
     )
