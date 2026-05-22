@@ -42,12 +42,13 @@ class Settings(BaseSettings):
     # --- Redis ---
     REDIS_URL: str = "redis://redis:6379/0"
 
-    # --- Email (SMTP) ---
+    # --- Email ---
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = ""
+    RESEND_API_KEY: str = ""
 
     @field_validator("SMTP_PORT", mode="before")
     @classmethod

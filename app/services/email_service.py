@@ -1,13 +1,30 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import httpx
 from app.config import settings
 
 
 def _send(to_email: str, subject: str, html: str):
-    """Low-level SMTP send. Called from BackgroundTasks or Celery."""
+    """Send email via Resend API (preferred) or SMTP fallback."""
+    if settings.RESEND_API_KEY:
+        try:
+            httpx.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
+                json={
+                    "from": "LeanStock <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html,
+                },
+                timeout=10,
+            )
+        except Exception:
+            pass
+        return
+
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        # SMTP not configured — skip silently (dev/test environment)
         return
 
     msg = MIMEMultipart("alternative")
