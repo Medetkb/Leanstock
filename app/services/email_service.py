@@ -9,7 +9,7 @@ def _send(to_email: str, subject: str, html: str):
     """Send email via Resend API (preferred) or SMTP fallback."""
     if settings.RESEND_API_KEY:
         try:
-            httpx.post(
+            resp = httpx.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
                 json={
@@ -20,8 +20,9 @@ def _send(to_email: str, subject: str, html: str):
                 },
                 timeout=10,
             )
-        except Exception:
-            pass
+            print(f"[EMAIL] Resend response: {resp.status_code} {resp.text}")
+        except Exception as e:
+            print(f"[EMAIL] Resend error: {e}")
         return
 
     if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
