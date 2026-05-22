@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # --- Настройки базы данных ---
-    DATABASE_URL: str
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/leanstock"
 
     # --- JWT токены ---
     SECRET_KEY: str = "dev-secret-key"
