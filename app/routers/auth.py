@@ -144,8 +144,9 @@ def login(
         raise HTTPException(status_code=401, detail="Invalid email or password")
         # Намеренно одинаковая ошибка — не раскрываем какое поле неправильное
 
-    if not user.is_verified:
-        raise HTTPException(status_code=403, detail="Please verify your email first")
+    # Email verification is optional — users can login without verifying
+    # if not user.is_verified:
+    #     raise HTTPException(status_code=403, detail="Please verify your email first")
 
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Your account has been deactivated")
