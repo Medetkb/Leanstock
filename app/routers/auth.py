@@ -109,6 +109,7 @@ def register(
         password_hash=hash_password(body.password),
         tenant_id=tenant.id,
         role=role,
+        is_verified=True,
     )
     session.add(user)
     session.flush()
