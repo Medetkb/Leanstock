@@ -911,14 +911,34 @@ async function doLogin() {
 }
 
 async function doRegister() {
+  const email    = document.getElementById('re-email').value;
+  const password = document.getElementById('re-pass').value;
+
   const r = await req('POST', '/auth/register', {
-    email:       document.getElementById('re-email').value,
+    email,
     username:    document.getElementById('re-user').value,
-    password:    document.getElementById('re-pass').value,
+    password,
     tenant_name: document.getElementById('re-tenant').value,
   });
   showResp('r-auth', r.status, r.data);
-  r.ok ? toast('Зарегистрирован! Проверь почту 📧') : toast(r.data.detail || 'Ошибка', 'err');
+  if (!r.ok) { toast(r.data.detail || 'Ошибка', 'err'); return; }
+
+  toast('Зарегистрирован! Входим...');
+
+  // Auto-login after registration
+  const lr = await req('POST', '/auth/login', { email, password });
+  if (lr.ok) {
+    token   = lr.data.access_token;
+    refresh = lr.data.refresh_token;
+    localStorage.setItem('ls_token',   token);
+    localStorage.setItem('ls_refresh', refresh);
+    const me_r = await req('GET', '/auth/me');
+    if (me_r.ok) { me = me_r.data; localStorage.setItem('ls_me', JSON.stringify(me)); }
+    updateUI();
+    await refreshCaches();
+    show('dashboard');
+    toast('Добро пожаловать! 👋');
+  }
 }
 
 async function doVerify() {
