@@ -80,14 +80,22 @@ def register(
     if session.exec(select(User).where(User.username == body.username)).first():
         raise HTTPException(status_code=409, detail="Username already taken")
 
-    # Ищем существующую компанию или создаём новую
-    tenant = session.exec(select(Tenant).where(Tenant.name == body.tenant_name)).first()
+    # Ищем существующую компанию по slug (регистронезависимо) или создаём новую
+    slug = body.tenant_name.lower().replace(" ", "-")
+    tenant = session.exec(
+        select(Tenant).where(Tenant.slug == slug)
+    ).first()
     if not tenant:
-        slug = body.tenant_name.lower().replace(" ", "-")
+        # Если slug занят другим именем — добавляем суффикс
+        existing_slug = session.exec(
+            select(Tenant).where(Tenant.slug == slug)
+        ).first()
+        if existing_slug:
+            import random
+            slug = f"{slug}-{random.randint(100, 999)}"
         tenant = Tenant(name=body.tenant_name, slug=slug)
         session.add(tenant)
         session.flush()
-        # flush() сохраняет в транзакцию и даёт tenant.id, но не делает commit
 
     # Первый пользователь в компании автоматически становится admin
     existing_in_tenant = session.exec(
